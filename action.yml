@@ -1,0 +1,24 @@
+name: 'Datadog CI'
+description: 'Execute commands from your Continuous Integration (CI) and Continuous Delivery (CD) pipelines to integrate with existing Datadog products.'
+inputs:
+  DD_SITE:
+    required: false
+    default: 'us3.datadoghq.com'
+  COMMAND:
+    required: true
+  DD_API_KEY:
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Download Datadog CI
+      run: curl -L --fail "https://github.com/DataDog/datadog-ci/releases/latest/download/datadog-ci_linux-x64" --output "/usr/local/bin/datadog-ci" && chmod +x /usr/local/bin/datadog-ci
+      shell: bash
+
+    - name: Executing Datadog CI
+      run: datadog-ci ${{ inputs.COMMAND }}
+      shell: bash
+      env:
+          DD_SITE: ${{ inputs.DD_SITE }}
+          DD_API_KEY: ${{ inputs.DD_API_KEY }}
