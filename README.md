@@ -17,8 +17,10 @@ To use this Datadog CI action, add it to your pipeline workflow YAML file. Here 
 
 **P.S. this role can't be assumed by any repo outside of Flipdish GitHub Org.**
 
-### `flipdishbytes/datadog-ci@v1.1` - no need for DD_API_KEY being set. Execution time 5s.
-Here is Github Actions workflow example. Should be used by default in Flipdish Org. It doesn't require `DD_API_KEY` secret being set in the repository.
+### How to use?
+
+#### `flipdishbytes/datadog-ci@v1.1` - no need for DD_API_KEY being set. Execution time 5s.
+Should be used by default in Flipdish Org. It doesn't require `DD_API_KEY` secret being set in the repository.
 
 ```yaml
 name: GH Action workflow without DD_API_KEY secret being set
@@ -49,12 +51,10 @@ jobs:
         uses: flipdishbytes/datadog-ci@v1.1
         with:
           COMMAND: 'tag --level pipeline --tags service:aws-governance --tags team:de-team --tags env:production'
-          DD_API_KEY: ${{ secrets.DD_API_KEY }}
-
 ```
 
-### `flipdishbytes/datadog-ci@v1.0` - DD_API_KEY is required. Execution time 3s.
-Here is Github Actions workflow example. Should be used only if you want to set DD_API_KEY and DD_SITE in your repository. It requires `DD_API_KEY` secret being set in the repository. `DD_SITE` is set to us3.datadoghq.com by default.
+#### `flipdishbytes/datadog-ci@v1.0` - DD_API_KEY is required. Execution time 3s.
+Should be used only if you want to set DD_API_KEY and DD_SITE in your repository. It requires `DD_API_KEY` secret being set in the repository. `DD_SITE` is set to us3.datadoghq.com by default.
 ```yaml
 name: GH Action workflow with DD_API_KEY secret being set up
 
@@ -82,7 +82,4 @@ jobs:
           COMMAND: 'tag --level pipeline --tags service:aws-governance --tags team:de-team --tags env:production'
           DD_API_KEY: ${{ secrets.DD_API_KEY }} # v1.0 requires DD_API_KEY being set.
         #   DD_SITE: 'us3.datadoghq.com' # DD_SITE is set to us3.datadoghq.com by default.
-
 ```
-
-
