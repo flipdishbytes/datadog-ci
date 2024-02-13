@@ -6,14 +6,33 @@ inputs:
     default: 'us3.datadoghq.com'
   COMMAND:
     required: true
-  DD_API_KEY:
-    required: true
+
+permissions:
+  contents: read
+  id-token: write
 
 runs:
   using: "composite"
   steps:
     - name: Download Datadog CI
-      run: curl -L --fail "https://github.com/DataDog/datadog-ci/releases/latest/download/datadog-ci_linux-x64" --output "/usr/local/bin/datadog-ci" && chmod +x /usr/local/bin/datadog-ci
+      run: |
+        if [ ! -f /usr/local/bin/datadog-ci ]; then
+          curl -L --fail "https://github.com/DataDog/datadog-ci/releases/latest/download/datadog-ci_linux-x64" --output "/usr/local/bin/datadog-ci" && chmod +x /usr/local/bin/datadog-ci
+        fi
+      shell: bash
+    
+    - name: Assume AWS management account role
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: arn:aws:iam::865076270365:role/github-ci-datadog-api-key-read-role
+        aws-region: eu-west-1
+        role-session-name: "GitHubActions-DeployLayerStack"
+        unset-current-credentials: true
+    
+    - name: Read Datadog AWS Secret value
+      run: |
+        MGMT_DD_API_KEY=$(aws secretsmanager get-secret-value --secret-id arn:aws:secretsmanager:eu-west-1:865076270365:secret:DatadogGithubActionsApiKey-prGZpR --query SecretString --output text)
+        echo "MGMT_DD_API_KEY=$MGMT_DD_API_KEY" >> $GITHUB_ENV
       shell: bash
 
     - name: Executing Datadog CI
@@ -21,4 +40,4 @@ runs:
       shell: bash
       env:
           DD_SITE: ${{ inputs.DD_SITE }}
-          DD_API_KEY: ${{ secrets['DD_API_KEY'] }}
+          DD_API_KEY: ${{ env.MGMT_DD_API_KEY }}
