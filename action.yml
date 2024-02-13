@@ -21,4 +21,4 @@ runs:
       shell: bash
       env:
           DD_SITE: ${{ inputs.DD_SITE }}
-          DD_API_KEY: ${{ secrets['DD_API_KEY'] }}
+          DD_API_KEY: ${{ inputs.DD_API_KEY }}
