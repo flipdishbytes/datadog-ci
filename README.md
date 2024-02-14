@@ -109,7 +109,7 @@ resources: # resources are required to load the template
       endpoint: flipdishbytes
       type: github
       name: flipdishbytes/datadog-ci
-      ref: master
+      ref: main
       trigger: none
 
 variables:
