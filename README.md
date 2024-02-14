@@ -106,14 +106,14 @@ pr: none
 resources: # resources are required to load the template
   repositories:
     - repository: DatadogCI
-      endpoint: flipdishbytes
+      endpoint: 'flipdishbytes-Web Order' # this could be different for each Azure DevOps Project.
       type: github
       name: flipdishbytes/datadog-ci
       ref: main
       trigger: none
 
 variables:
-    - group: 'Datadog API Keys' #this variable group is required to provide datadogAPIKeyAzureDevOps secret
+    - group: 'Datadog API Keys' # this variable group is required to provide datadogAPIKeyAzureDevOps secret
     - name: environmentName
       value: 'production'
     - name: Version
