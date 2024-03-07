@@ -14,26 +14,6 @@ permissions:
 runs:
   using: "composite"
   steps:
-    - name: Download Datadog CI
-      run: |
-        if [ ! -f /usr/local/bin/datadog-ci ]; then
-          curl -L --fail "https://github.com/DataDog/datadog-ci/releases/latest/download/datadog-ci_linux-x64" --output "/usr/local/bin/datadog-ci" && chmod +x /usr/local/bin/datadog-ci
-        fi
-        if ! which datadog-ci > /dev/null 2>&1; then
-          echo "Datadog CI is not installed. Proceeding with installation..."
-          curl -L --fail "https://github.com/DataDog/datadog-ci/releases/latest/download/datadog-ci_linux-x64" --output "/usr/local/bin/datadog-ci" && chmod +x /usr/local/bin/datadog-ci
-    
-          if [ $? -eq 0 ]; then
-            echo "Datadog CI has been successfully installed."
-          else
-            echo "Failed to install Datadog CI. Please check your installation process."
-            exit 1
-          fi
-        else
-          echo "Datadog CI is already installed."
-        fi
-      shell: bash
-    
     - name: Assume AWS management account role
       uses: aws-actions/configure-aws-credentials@v4
       with:
@@ -49,7 +29,25 @@ runs:
       shell: bash
 
     - name: Executing Datadog CI
-      run: datadog-ci ${{ inputs.COMMAND }}
+      run: |
+        if ! which datadog-ci > /dev/null 2>&1; then
+          echo "Datadog CI is not installed. Proceeding with installation..."
+          if curl -L --fail "https://github.com/DataDog/datadog-ci/releases/latest/download/datadog-ci_linux-x64" --output "/usr/local/bin/datadog-ci" && chmod +x /usr/local/bin/datadog-ci; then
+            echo "Datadog CI has been successfully installed."
+          else
+            echo "Failed to install Datadog CI. Please check your installation process."
+            exit 0
+          fi
+        else
+          echo "Datadog CI is already installed."
+        fi
+
+        if which datadog-ci > /dev/null 2>&1; then
+          datadog-ci $COMMAND || echo "Failed to execute Datadog CI command."
+        else
+          echo "Datadog CI is not installed. Skipping execution of command."
+          exit 0
+        fi
       shell: bash
       env:
           DD_SITE: ${{ inputs.DD_SITE }}
