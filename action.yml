@@ -23,9 +23,10 @@ runs:
         unset-current-credentials: true
     
     - name: Read Datadog AWS Secret value
+      id: dd_api_key
       run: |
-        MGMT_DD_API_KEY=$(aws secretsmanager get-secret-value --secret-id arn:aws:secretsmanager:eu-west-1:865076270365:secret:DatadogGithubActionsApiKey-prGZpR --query SecretString --output text)
-        echo "MGMT_DD_API_KEY=$MGMT_DD_API_KEY" >> $GITHUB_ENV
+        DD_API_KEY=$(aws secretsmanager get-secret-value --secret-id arn:aws:secretsmanager:eu-west-1:865076270365:secret:DatadogGithubActionsApiKey-prGZpR --query SecretString --output text)
+        echo "DD_API_KEY=$DD_API_KEY" >> $GITHUB_OUTPUT
       shell: bash
 
     - name: Executing Datadog CI
@@ -51,4 +52,4 @@ runs:
       shell: bash
       env:
           DD_SITE: ${{ inputs.DD_SITE }}
-          DD_API_KEY: ${{ env.MGMT_DD_API_KEY }}
+          DD_API_KEY: ${{ steps.dd_api_key.outputs.DD_API_KEY }}
