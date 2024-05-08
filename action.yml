@@ -26,6 +26,7 @@ runs:
       id: dd_api_key
       run: |
         DD_API_KEY=$(aws secretsmanager get-secret-value --secret-id arn:aws:secretsmanager:eu-west-1:865076270365:secret:DatadogGithubActionsApiKey-prGZpR --query SecretString --output text)
+        echo "::add-mask::$DD_API_KEY"
         echo "DD_API_KEY=$DD_API_KEY" >> $GITHUB_OUTPUT
       shell: bash
 
