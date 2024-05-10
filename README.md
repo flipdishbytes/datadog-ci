@@ -47,6 +47,7 @@ jobs:
 
       - name: Add tags to pipeline traces
         uses: flipdishbytes/datadog-ci@v1.1
+        continue-on-error: true
         with:
           COMMAND: 'tag --level pipeline --tags service:aws-governance --tags team:de-team --tags env:production'
 ```
@@ -76,6 +77,7 @@ jobs:
 
       - name: Add tags to pipeline traces
         uses: flipdishbytes/datadog-ci@v1.0
+        continue-on-error: true
         with:
           COMMAND: 'tag --level pipeline --tags service:aws-governance --tags team:de-team --tags env:production'
           DD_API_KEY: ${{ secrets.DD_API_KEY }} # v1.0 requires DD_API_KEY being set.
