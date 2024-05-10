@@ -39,7 +39,7 @@ runs:
         fi
 
         if which datadog-ci > /dev/null 2>&1; then
-          datadog-ci ${{ inputs.COMMAND }} || echo "Failed to execute Datadog CI command."
+          datadog-ci ${{ inputs.COMMAND }}
         else
           echo "Datadog CI is not installed. Skipping execution of command."
           exit 0
