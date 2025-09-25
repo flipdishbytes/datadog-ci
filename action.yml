@@ -37,6 +37,8 @@ runs:
                 chmod +x /usr/local/bin/datadog-ci
                 echo "Datadog CI has been successfully installed."
 
+                echo "Executing datadog command: ${{ inputs.COMMAND }}"
+
                 /usr/local/bin/datadog-ci ${{ inputs.COMMAND }}
               else
                 echo "Failed to install Datadog CI. Please check your installation process."
@@ -44,6 +46,7 @@ runs:
               fi
         else
               echo "Datadog CI is already installed."
+              echo "Executing datadog command: ${{ inputs.COMMAND }}"
               datadog-ci ${{ inputs.COMMAND }}
         fi
 
