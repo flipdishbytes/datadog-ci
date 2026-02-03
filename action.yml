@@ -6,6 +6,9 @@ inputs:
     default: 'us3.datadoghq.com'
   COMMAND:
     required: true
+  BACKUP_ROLE_ARN:
+    required: true
+    description: 'AWS role ARN to restore after Datadog CI execution.'
 
 permissions:
   contents: read
@@ -14,55 +17,14 @@ permissions:
 runs:
   using: "composite"
   steps:
-    - name: Backup AWS credentials
-      id: backup-aws-creds
+    - name: Assume backup role (validate)
       continue-on-error: true
-      run: |
-        # Backup current AWS credentials
-        if [ -n "$AWS_ACCESS_KEY_ID" ]; then
-          echo "AWS_ACCESS_KEY_ID_BACKUP=$AWS_ACCESS_KEY_ID" >> $GITHUB_ENV
-        fi
-        if [ -n "$AWS_SECRET_ACCESS_KEY" ]; then
-          echo "AWS_SECRET_ACCESS_KEY_BACKUP=$AWS_SECRET_ACCESS_KEY" >> $GITHUB_ENV
-        fi
-        if [ -n "$AWS_SESSION_TOKEN" ]; then
-          echo "AWS_SESSION_TOKEN_BACKUP=$AWS_SESSION_TOKEN" >> $GITHUB_ENV
-        fi
-        if [ -n "$AWS_REGION" ]; then
-          echo "AWS_REGION_BACKUP=$AWS_REGION" >> $GITHUB_ENV
-        fi
-        if [ -n "$AWS_DEFAULT_REGION" ]; then
-          echo "AWS_DEFAULT_REGION_BACKUP=$AWS_DEFAULT_REGION" >> $GITHUB_ENV
-        fi
-        
-        # Get current role ARN and extract workload_name and ou_name
-        if command -v aws > /dev/null 2>&1; then
-          CURRENT_ROLE_ARN=$(aws sts get-caller-identity --query Arn --output text 2>/dev/null || echo "")
-          if [ -n "$CURRENT_ROLE_ARN" ]; then
-            echo "ORIGINAL_ROLE_ARN=$CURRENT_ROLE_ARN" >> $GITHUB_ENV
-            echo "Backed up original role ARN: $CURRENT_ROLE_ARN"
-            
-            # Extract workload_name and ou_name from role ARN
-            # Expected format: arn:aws:iam::<account>:role/github-ci-<workload_name>-<ou_name>-<suffix>
-            # Or: arn:aws:iam::<account>:role/github-ci-<workload_name>-<ou_name>
-            ROLE_NAME=$(echo "$CURRENT_ROLE_ARN" | sed 's/.*\/\(.*\)/\1/')
-            if [[ "$ROLE_NAME" =~ ^github-ci-(.+)-(.+)$ ]] || [[ "$ROLE_NAME" =~ ^github-ci-(.+)-(.+)-(.+)$ ]]; then
-              # Try to extract workload_name and ou_name
-              # Remove github-ci- prefix
-              REMAINING=$(echo "$ROLE_NAME" | sed 's/^github-ci-//')
-              # Split by hyphen - first part is workload, second is ou
-              WORKLOAD_NAME=$(echo "$REMAINING" | cut -d'-' -f1)
-              OU_NAME=$(echo "$REMAINING" | cut -d'-' -f2)
-              
-              if [ -n "$WORKLOAD_NAME" ] && [ -n "$OU_NAME" ]; then
-                echo "WORKLOAD_NAME_BACKUP=$WORKLOAD_NAME" >> $GITHUB_ENV
-                echo "OU_NAME_BACKUP=$OU_NAME" >> $GITHUB_ENV
-                echo "Extracted workload_name: $WORKLOAD_NAME, ou_name: $OU_NAME"
-              fi
-            fi
-          fi
-        fi
-      shell: bash
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ inputs.BACKUP_ROLE_ARN }}
+        aws-region: eu-west-1
+        role-session-name: "GitHubActions-BackupRole-Validate"
+        unset-current-credentials: true
 
     - name: Assume AWS management account role
       uses: aws-actions/configure-aws-credentials@v4
@@ -106,108 +68,11 @@ runs:
       env:
           DD_SITE: ${{ inputs.DD_SITE }}
 
-    - name: Restore AWS credentials
+    - name: Restore backup role
       continue-on-error: true
-      run: |
-        # Restore original AWS credentials by re-assuming the original role
-        RESTORE_SUCCESS=false
-        
-        if [ -n "$ORIGINAL_ROLE_ARN" ]; then
-          echo "Attempting to restore original AWS role: $ORIGINAL_ROLE_ARN"
-          
-          # Determine AWS region from backup or use default
-          RESTORE_REGION="${AWS_REGION_BACKUP:-${AWS_DEFAULT_REGION_BACKUP:-eu-west-1}}"
-          
-          # Try to re-assume the role using GitHub OIDC token
-          if [ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ] && [ -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ] && command -v aws > /dev/null 2>&1; then
-            echo "Attempting to re-assume role using GitHub OIDC..."
-            
-            # Construct OIDC token URL with audience parameter
-            if [[ "$ACTIONS_ID_TOKEN_REQUEST_URL" == *"?"* ]]; then
-              OIDC_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=sts.amazonaws.com"
-            else
-              OIDC_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}?audience=sts.amazonaws.com"
-            fi
-            
-            # Get OIDC token (handle both with and without jq)
-            OIDC_RESPONSE=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$OIDC_URL" 2>/dev/null)
-            
-            if [ -n "$OIDC_RESPONSE" ]; then
-              # Try to extract token value (works with or without jq)
-              if command -v jq > /dev/null 2>&1; then
-                OIDC_TOKEN=$(echo "$OIDC_RESPONSE" | jq -r '.value' 2>/dev/null)
-              else
-                # Fallback: extract value using sed/grep
-                OIDC_TOKEN=$(echo "$OIDC_RESPONSE" | grep -o '"value":"[^"]*"' | sed 's/"value":"\([^"]*\)"/\1/' | head -1)
-              fi
-              
-              if [ -n "$OIDC_TOKEN" ] && [ "$OIDC_TOKEN" != "null" ] && [ "$OIDC_TOKEN" != "" ]; then
-                # Assume role using OIDC token
-                ASSUME_ROLE_OUTPUT=$(aws sts assume-role-with-web-identity \
-                  --role-arn "$ORIGINAL_ROLE_ARN" \
-                  --role-session-name "GitHubActions-RestoreRole" \
-                  --web-identity-token "$OIDC_TOKEN" \
-                  --region "$RESTORE_REGION" \
-                  --output json 2>/dev/null)
-                
-                if [ $? -eq 0 ] && [ -n "$ASSUME_ROLE_OUTPUT" ]; then
-                  # Extract credentials from assume-role output
-                  if command -v jq > /dev/null 2>&1; then
-                    NEW_ACCESS_KEY=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.AccessKeyId' 2>/dev/null)
-                    NEW_SECRET_KEY=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.SecretAccessKey' 2>/dev/null)
-                    NEW_SESSION_TOKEN=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.SessionToken' 2>/dev/null)
-                  else
-                    # Fallback: extract using grep/sed
-                    NEW_ACCESS_KEY=$(echo "$ASSUME_ROLE_OUTPUT" | grep -o '"AccessKeyId": "[^"]*"' | sed 's/"AccessKeyId": "\([^"]*\)"/\1/' | head -1)
-                    NEW_SECRET_KEY=$(echo "$ASSUME_ROLE_OUTPUT" | grep -o '"SecretAccessKey": "[^"]*"' | sed 's/"SecretAccessKey": "\([^"]*\)"/\1/' | head -1)
-                    NEW_SESSION_TOKEN=$(echo "$ASSUME_ROLE_OUTPUT" | grep -o '"SessionToken": "[^"]*"' | sed 's/"SessionToken": "\([^"]*\)"/\1/' | head -1)
-                  fi
-                  
-                  if [ -n "$NEW_ACCESS_KEY" ] && [ "$NEW_ACCESS_KEY" != "null" ] && [ "$NEW_ACCESS_KEY" != "" ]; then
-                    echo "Successfully re-assumed original role"
-                    echo "AWS_ACCESS_KEY_ID=$NEW_ACCESS_KEY" >> $GITHUB_ENV
-                    echo "AWS_SECRET_ACCESS_KEY=$NEW_SECRET_KEY" >> $GITHUB_ENV
-                    echo "AWS_SESSION_TOKEN=$NEW_SESSION_TOKEN" >> $GITHUB_ENV
-                    echo "AWS_REGION=$RESTORE_REGION" >> $GITHUB_ENV
-                    echo "AWS_DEFAULT_REGION=$RESTORE_REGION" >> $GITHUB_ENV
-                    RESTORE_SUCCESS=true
-                  fi
-                fi
-              fi
-            fi
-          fi
-          
-          if [ "$RESTORE_SUCCESS" = false ]; then
-            echo "Warning: Could not re-assume role via OIDC. Restoring credentials from backup..."
-          fi
-        fi
-        
-        # Restore AWS credentials from backup (fallback or if no role ARN)
-        if [ "$RESTORE_SUCCESS" = false ] && ([ -n "$AWS_ACCESS_KEY_ID_BACKUP" ] || [ -n "$AWS_SECRET_ACCESS_KEY_BACKUP" ]); then
-          echo "Restoring AWS credentials from backup..."
-          
-          if [ -n "$AWS_ACCESS_KEY_ID_BACKUP" ]; then
-            echo "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID_BACKUP" >> $GITHUB_ENV
-          fi
-          if [ -n "$AWS_SECRET_ACCESS_KEY_BACKUP" ]; then
-            echo "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY_BACKUP" >> $GITHUB_ENV
-          fi
-          if [ -n "$AWS_SESSION_TOKEN_BACKUP" ]; then
-            echo "AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN_BACKUP" >> $GITHUB_ENV
-          fi
-          if [ -n "$AWS_REGION_BACKUP" ]; then
-            echo "AWS_REGION=$AWS_REGION_BACKUP" >> $GITHUB_ENV
-          fi
-          if [ -n "$AWS_DEFAULT_REGION_BACKUP" ]; then
-            echo "AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION_BACKUP" >> $GITHUB_ENV
-          fi
-          
-          if [ -n "$ORIGINAL_ROLE_ARN" ]; then
-            echo "Warning: Restored AWS credentials from backup. If credentials expire, you may need to re-assume role: $ORIGINAL_ROLE_ARN"
-          else
-            echo "AWS credentials restored successfully"
-          fi
-        elif [ "$RESTORE_SUCCESS" = false ]; then
-          echo "Warning: No AWS credentials backup found. Original credentials may have been overwritten."
-        fi
-      shell: bash
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ inputs.BACKUP_ROLE_ARN }}
+        aws-region: eu-west-1
+        role-session-name: "GitHubActions-BackupRole-Restore"
+        unset-current-credentials: true
