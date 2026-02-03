@@ -9,6 +9,10 @@ inputs:
   BACKUP_ROLE_ARN:
     required: true
     description: 'AWS role ARN to restore after Datadog CI execution.'
+  BACKUP_ROLE_REGION:
+    required: false
+    default: 'eu-west-1'
+    description: 'AWS region for the backup role assumption.'
 
 permissions:
   contents: read
@@ -18,11 +22,11 @@ runs:
   using: "composite"
   steps:
     - name: Assume backup role (validate)
-      continue-on-error: true
+      id: backup-role-validate
       uses: aws-actions/configure-aws-credentials@v4
       with:
         role-to-assume: ${{ inputs.BACKUP_ROLE_ARN }}
-        aws-region: eu-west-1
+        aws-region: ${{ inputs.BACKUP_ROLE_REGION }}
         role-session-name: "GitHubActions-BackupRole-Validate"
         unset-current-credentials: true
 
@@ -69,10 +73,11 @@ runs:
           DD_SITE: ${{ inputs.DD_SITE }}
 
     - name: Restore backup role
+      if: steps.backup-role-validate.outcome == 'success'
       continue-on-error: true
       uses: aws-actions/configure-aws-credentials@v4
       with:
         role-to-assume: ${{ inputs.BACKUP_ROLE_ARN }}
-        aws-region: eu-west-1
+        aws-region: ${{ inputs.BACKUP_ROLE_REGION }}
         role-session-name: "GitHubActions-BackupRole-Restore"
         unset-current-credentials: true
