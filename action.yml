@@ -26,6 +26,7 @@ runs:
       continue-on-error: true
       run: |
         export DD_API_KEY=$(aws secretsmanager get-secret-value --secret-id arn:aws:secretsmanager:eu-west-1:865076270365:secret:DatadogGithubActionsApiKey-prGZpR --query SecretString --output text)
+        export DATADOG_API_KEY="$DD_API_KEY"
         
         export NODE_OPTIONS_BACKUP=$NODE_OPTIONS
         export NODE_OPTIONS=""
