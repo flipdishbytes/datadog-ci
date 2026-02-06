@@ -53,6 +53,7 @@ runs:
 
         export NODE_OPTIONS=$NODE_OPTIONS_BACKUP
         unset DD_API_KEY
+        unset DATADOG_API_KEY
       shell: bash
       env:
           DD_SITE: ${{ inputs.DD_SITE }}
