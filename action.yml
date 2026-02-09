@@ -37,15 +37,17 @@ runs:
               if curl -L --fail "https://github.com/DataDog/datadog-ci/releases/latest/download/datadog-ci_linux-x64" --output "/usr/local/bin/datadog-ci"; then
                 chmod +x /usr/local/bin/datadog-ci
                 echo "Datadog CI has been successfully installed."
+                echo "Executing datadog command: ${{ inputs.COMMAND }}"
 
-                /usr/local/bin/datadog-ci ${{ inputs.COMMAND }}
+                /usr/local/bin/datadog-ci ${{ inputs.COMMAND }} || echo "Failed to execute Datadog CI command."
               else
                 echo "Failed to install Datadog CI. Please check your installation process."
                 exit 1
               fi
         else
               echo "Datadog CI is already installed."
-              datadog-ci ${{ inputs.COMMAND }}
+              echo "Executing datadog command: ${{ inputs.COMMAND }}"
+              datadog-ci ${{ inputs.COMMAND }} || echo "Failed to execute Datadog CI command."
         fi
 
         export NODE_OPTIONS=$NODE_OPTIONS_BACKUP
