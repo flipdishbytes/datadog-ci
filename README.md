@@ -2,7 +2,7 @@
 
 This custom GitHub Action & Azure DevOps Template were created to integrate Datadog CI monitoring into your CI/CD pipeline. It allows you to track and analyze the performance and health of your pipelines during the build and deployment process.
 
-# Github Action: Datadog CI `flipdishbytes/datadog-ci@v1.1`
+# Github Action: Datadog CI `flipdishbytes/datadog-ci@v1.3`
 
 To use this Datadog CI action, add it to your pipeline workflow YAML file. Here are examples of adding traces to the pipeline depending on your needs.
 
@@ -17,7 +17,7 @@ To use this Datadog CI action, add it to your pipeline workflow YAML file. Here 
 
 ### How to use?
 
-#### `flipdishbytes/datadog-ci@v1.1` - no need for DD_API_KEY being set. Execution time 5s.
+#### `flipdishbytes/datadog-ci@v1.3` - no need for DD_API_KEY being set. Execution time 5s.
 Should be used by default in Flipdish Org. It doesn't require `DD_API_KEY` secret being set in the repository.
 
 ```yaml
@@ -33,7 +33,7 @@ on:
     branches:
       - 'main'
 
-permissions: # v1.1 requires id-token write permission to assume AWS role. Makes sure you added this to your yml.
+permissions: # v1.3 requires id-token write permission to assume AWS role. Makes sure you added this to your yml.
   contents: read
   id-token: write
 
@@ -46,7 +46,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Add tags to pipeline traces
-        uses: flipdishbytes/datadog-ci@v1.1
+        uses: flipdishbytes/datadog-ci@v1.3
         continue-on-error: true
         with:
           COMMAND: 'tag --level pipeline --tags service:aws-governance --tags team:de-team --tags env:production'
