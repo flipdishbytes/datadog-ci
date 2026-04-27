@@ -2,20 +2,18 @@ name: 'Datadog CI'
 description: 'Execute commands from your Continuous Integration (CI) and Continuous Delivery (CD) pipelines to integrate with existing Datadog products.'
 inputs:
   DD_SITE:
+    description: 'The Datadog site to use. Defaults to us3.datadoghq.com.'
     required: false
     default: 'us3.datadoghq.com'
   COMMAND:
+    description: 'The command to execute. e.g. tag --level pipeline --tags service:aws-governance --tags team:de-team --tags env:production'
     required: true
-
-permissions:
-  contents: read
-  id-token: write
 
 runs:
   using: "composite"
   steps:
     - name: Assume AWS management account role
-      uses: aws-actions/configure-aws-credentials@v4
+      uses: aws-actions/configure-aws-credentials@v6
       with:
         role-to-assume: arn:aws:iam::865076270365:role/github-ci-datadog-api-key-read-role
         aws-region: eu-west-1
