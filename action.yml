@@ -9,10 +9,10 @@ inputs:
     description: 'The command to execute. e.g. tag --level pipeline --tags service:aws-governance --tags team:de-team --tags env:production'
     required: true
   DATADOG_API_KEY:
-    description: 'Datadog API key. Pass the Flipdish Org secret: ${{ secrets.DATADOG_API_KEY }}'
+    description: 'Datadog API key. Pass the Flipdish Org secret: DATADOG_API_KEY'
     required: true
   DATADOG_APP_KEY:
-    description: 'Datadog application key. Pass the Flipdish Org secret: ${{ secrets.DATADOG_APP_KEY }}'
+    description: 'Datadog application key. Pass the Flipdish Org secret: DATADOG_APP_KEY'
     required: true
 
 runs:
