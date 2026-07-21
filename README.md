@@ -2,26 +2,21 @@
 
 This custom GitHub Action & Azure DevOps Template were created to integrate Datadog CI monitoring into your CI/CD pipeline. It allows you to track and analyze the performance and health of your pipelines during the build and deployment process.
 
-# Github Action: Datadog CI `flipdishbytes/datadog-ci@v1.3`
+# Github Action: Datadog CI `flipdishbytes/datadog-ci@v1.4`
 
 To use this Datadog CI action, add it to your pipeline workflow YAML file. Here are examples of adding traces to the pipeline depending on your needs.
 
-### How it works?
-
-1. Downloads latest datadog-ci Linux binary wia curl
-2. Reads `DatadogGithubActionsApiKey` AWS Secret this using aws cli (preinstalled on all GitHub agents) and using it for `datadog-ci` command execution.
-
-**There is `DatadogGithubActionsApiKey` secret stored at AWS SSM in Flipdish Management account and separate role created for GitHub Actions which can be assumed only by Flipdish Org GitHub Actions repositories and has IAM permissions only for getting this secret value.**
-
-**P.S. this role can't be assumed by any repo outside of Flipdish GitHub Org.**
-
 ### How to use?
 
-#### `flipdishbytes/datadog-ci@v1.3` - no need for DD_API_KEY being set. Execution time 5s.
-Should be used by default in Flipdish Org. It doesn't require `DD_API_KEY` secret being set in the repository.
+#### `flipdishbytes/datadog-ci@v1.4` - requires Flipdish Org global secrets. Execution time ~3s.
+Should be used by default in Flipdish Org. It requires `DATADOG_API_KEY` and `DATADOG_APP_KEY` GitHub Actions Org secrets (no per-repository secrets needed).
+
+**How it works?**
+1. Downloads latest datadog-ci Linux binary via curl
+2. Uses `DATADOG_API_KEY` and `DATADOG_APP_KEY` passed from Flipdish Org global secrets for `datadog-ci` command execution
 
 ```yaml
-name: GH Action workflow without DD_API_KEY secret being set
+name: GH Action workflow with Flipdish Org Datadog secrets
 
 on:
   pull_request:
@@ -33,7 +28,51 @@ on:
     branches:
       - 'main'
 
-permissions: # v1.3 requires id-token write permission to assume AWS role. Makes sure you added this to your yml.
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Add tags to pipeline traces
+        uses: flipdishbytes/datadog-ci@v1.4
+        continue-on-error: true
+        with:
+          COMMAND: 'tag --level pipeline --tags service:aws-governance --tags team:de-team --tags env:production'
+          DATADOG_API_KEY: ${{ secrets.DATADOG_API_KEY }}
+          DATADOG_APP_KEY: ${{ secrets.DATADOG_APP_KEY }}
+```
+
+#### `flipdishbytes/datadog-ci@v1.3` - no need for Datadog secrets being set in the workflow. Execution time ~5s.
+Uses an AWS Secrets Manager key via OIDC. Prefer `@v1.4` for new workflows.
+
+**How it works?**
+1. Downloads latest datadog-ci Linux binary via curl
+2. Reads `DatadogGithubActionsApiKey` AWS Secret using aws cli (preinstalled on all GitHub agents) and uses it for `datadog-ci` command execution
+
+**There is `DatadogGithubActionsApiKey` secret stored at AWS SSM in Flipdish Management account and separate role created for GitHub Actions which can be assumed only by Flipdish Org GitHub Actions repositories and has IAM permissions only for getting this secret value.**
+
+**P.S. this role can't be assumed by any repo outside of Flipdish GitHub Org.**
+
+```yaml
+name: GH Action workflow without Datadog secrets being set
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - edited
+    branches:
+      - 'main'
+
+permissions: # v1.3 requires id-token write permission to assume AWS role. Make sure you added this to your yml.
   contents: read
   id-token: write
 
@@ -52,7 +91,40 @@ jobs:
           COMMAND: 'tag --level pipeline --tags service:aws-governance --tags team:de-team --tags env:production'
 ```
 
-#### `flipdishbytes/datadog-ci@v1.0` - DD_API_KEY is required. Execution time 3s.
+```yaml
+name: GH Action workflow with Flipdish Org Datadog secrets
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - edited
+    branches:
+      - 'main'
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Add tags to pipeline traces
+        uses: flipdishbytes/datadog-ci@v1.4
+        continue-on-error: true
+        with:
+          COMMAND: 'tag --level pipeline --tags service:aws-governance --tags team:de-team --tags env:production'
+          DATADOG_API_KEY: ${{ secrets.DATADOG_API_KEY }}
+          DATADOG_APP_KEY: ${{ secrets.DATADOG_APP_KEY }}
+```
+
+#### `flipdishbytes/datadog-ci@v1.0` - DD_API_KEY is required. Execution time ~3s.
 Should be used only if you want to set DD_API_KEY and DD_SITE in your repository. It requires `DD_API_KEY` secret being set in the repository. `DD_SITE` is set to us3.datadoghq.com by default.
 ```yaml
 name: GH Action workflow with DD_API_KEY secret being set up
@@ -90,7 +162,7 @@ To use this Datadog CI template, add it to your pipeline YAML file stages. Here 
 
 ### How it works?
 
-1. Downloads latest datadog-ci Linux binary wia curl if it's not preinstalled
+1. Downloads latest datadog-ci Linux binary via curl if it's not preinstalled
 2. Executing `datadog-ci` with the provided command.
 
 ### How to use?

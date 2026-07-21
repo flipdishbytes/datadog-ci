@@ -8,24 +8,19 @@ inputs:
   COMMAND:
     description: 'The command to execute. e.g. tag --level pipeline --tags service:aws-governance --tags team:de-team --tags env:production'
     required: true
+  DATADOG_API_KEY:
+    description: 'Datadog API key. Pass the Flipdish Org secret: ${{ secrets.DATADOG_API_KEY }}'
+    required: true
+  DATADOG_APP_KEY:
+    description: 'Datadog application key. Pass the Flipdish Org secret: ${{ secrets.DATADOG_APP_KEY }}'
+    required: true
 
 runs:
   using: "composite"
   steps:
-    - name: Assume AWS management account role
-      uses: aws-actions/configure-aws-credentials@v6
-      with:
-        role-to-assume: arn:aws:iam::865076270365:role/github-ci-datadog-api-key-read-role
-        aws-region: eu-west-1
-        role-session-name: "GitHubActions-DeployLayerStack"
-        unset-current-credentials: true
-
     - name: Executing Datadog CI
       continue-on-error: true
       run: |
-        export DD_API_KEY=$(aws secretsmanager get-secret-value --secret-id arn:aws:secretsmanager:eu-west-1:865076270365:secret:DatadogGithubActionsApiKey-prGZpR --query SecretString --output text)
-        export DATADOG_API_KEY="$DD_API_KEY"
-        
         export NODE_OPTIONS_BACKUP=$NODE_OPTIONS
         export NODE_OPTIONS=""
         unset NODE_OPTIONS
@@ -49,8 +44,10 @@ runs:
         fi
 
         export NODE_OPTIONS=$NODE_OPTIONS_BACKUP
-        unset DD_API_KEY
-        unset DATADOG_API_KEY
       shell: bash
       env:
           DD_SITE: ${{ inputs.DD_SITE }}
+          DATADOG_API_KEY: ${{ inputs.DATADOG_API_KEY }}
+          DATADOG_APP_KEY: ${{ inputs.DATADOG_APP_KEY }}
+          DD_API_KEY: ${{ inputs.DATADOG_API_KEY }}
+          DD_APP_KEY: ${{ inputs.DATADOG_APP_KEY }}
