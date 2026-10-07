@@ -2,17 +2,17 @@
 
 This custom GitHub Action & Azure DevOps Template were created to integrate Datadog CI monitoring into your CI/CD pipeline. It allows you to track and analyze the performance and health of your pipelines during the build and deployment process.
 
-# Github Action: Datadog CI `flipdishbytes/datadog-ci@v1.4`
+# Github Action: Datadog CI `flipdishbytes/datadog-ci@v1.5`
 
 To use this Datadog CI action, add it to your pipeline workflow YAML file. Here are examples of adding traces to the pipeline depending on your needs.
 
 ### How to use?
 
-#### `flipdishbytes/datadog-ci@v1.4` - requires Flipdish Org global secrets. Execution time ~3s.
+#### `flipdishbytes/datadog-ci@v1.5` - requires Flipdish Org global secrets. Execution time ~3s.
 Should be used by default in Flipdish Org. It requires `DATADOG_API_KEY` and `DATADOG_APP_KEY` GitHub Actions Org secrets (no per-repository secrets needed).
 
 **How it works?**
-1. Downloads latest datadog-ci Linux binary via curl
+1. Downloads the latest datadog-ci binary for the runner's OS and CPU (Linux or macOS, x64 or arm64) via curl
 2. Uses `DATADOG_API_KEY` and `DATADOG_APP_KEY` passed from Flipdish Org global secrets for `datadog-ci` command execution
 
 ```yaml
@@ -40,7 +40,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Add tags to pipeline traces
-        uses: flipdishbytes/datadog-ci@v1.4
+        uses: flipdishbytes/datadog-ci@v1.5
         continue-on-error: true
         with:
           COMMAND: 'tag --level pipeline --tags service:aws-governance --tags team:de-team --tags env:production'
@@ -49,7 +49,7 @@ jobs:
 ```
 
 #### `flipdishbytes/datadog-ci@v1.3` - no need for Datadog secrets being set in the workflow. Execution time ~5s.
-Uses an AWS Secrets Manager key via OIDC. Prefer `@v1.4` for new workflows.
+Uses an AWS Secrets Manager key via OIDC. Prefer `@v1.5` for new workflows.
 
 **How it works?**
 1. Downloads latest datadog-ci Linux binary via curl
@@ -116,7 +116,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Add tags to pipeline traces
-        uses: flipdishbytes/datadog-ci@v1.4
+        uses: flipdishbytes/datadog-ci@v1.5
         continue-on-error: true
         with:
           COMMAND: 'tag --level pipeline --tags service:aws-governance --tags team:de-team --tags env:production'
